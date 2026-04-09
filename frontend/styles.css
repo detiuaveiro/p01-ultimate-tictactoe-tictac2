@@ -1,0 +1,113 @@
+:root {
+    --nord0: #2e3440;
+    --nord1: #3b4252;
+    --nord2: #434c5e;
+    --nord3: #4c566a;
+    --nord4: #d8dee9;
+    --nord5: #e5e9f0;
+    --nord6: #eceff4;
+    --nord7: #8fbcbb;
+    --nord8: #88c0d0;
+    --nord9: #81a1c1;
+    --nord10: #5e81ac;
+    --nord11: #bf616a; /* P1 Red */
+    --nord12: #d08770;
+    --nord13: #ebcb8b; /* P2 Yellow */
+    --nord14: #a3be8c;
+    --nord15: #b48ead;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--nord0);
+    color: var(--nord4);
+    font-family: monospace;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#ui-layer {
+    width: 350px;
+    background-color: var(--nord1);
+    border-right: 2px solid var(--nord3);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+h1,
+h2,
+h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+h1 {
+    color: var(--nord8);
+}
+
+.status-box {
+    padding: 15px;
+    border-radius: 8px;
+    background-color: var(--nord2);
+    border-left: 5px solid;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* UTTT Player 1 (Red X) */
+.status-box.p1 {
+    border-color: var(--nord11);
+}
+.status-box.p1 h3 {
+    color: var(--nord11);
+}
+
+/* UTTT Player 2 (Yellow O) */
+.status-box.p2 {
+    border-color: var(--nord13);
+}
+.status-box.p2 h3 {
+    color: var(--nord13);
+}
+
+.status-box p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#canvas-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--nord0);
+    padding: 20px;
+}
+
+.view-panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--nord1);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+canvas {
+    background-color: var(--nord0); /* Dark base for UTTT grid */
+    border-radius: 4px;
+    box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.3),
+        0 5px 15px rgba(0, 0, 0, 0.5);
+}
