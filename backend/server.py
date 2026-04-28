@@ -80,8 +80,7 @@ class UTTTServer:
                     await websocket.send(json.dumps({"type": "setup", "player_id": 1}))
                     # Start the agent loop and check conditions in parallel
                     await asyncio.gather(
-                        self.agent_loop(websocket, 1),
-                        self.check_start_conditions()
+                        self.agent_loop(websocket, 1), self.check_start_conditions()
                     )
                 elif not self.agent2_ws:
                     self.agent2_ws = websocket
@@ -89,8 +88,7 @@ class UTTTServer:
                     await websocket.send(json.dumps({"type": "setup", "player_id": 2}))
                     # Start the agent loop and check conditions in parallel
                     await asyncio.gather(
-                        self.agent_loop(websocket, 2),
-                        self.check_start_conditions()
+                        self.agent_loop(websocket, 2), self.check_start_conditions()
                     )
                 else:
                     await websocket.close()
@@ -118,7 +116,9 @@ class UTTTServer:
         async for _ in websocket:
             pass
 
-    async def agent_loop(self, websocket: WebSocketServerProtocol, player_id: int) -> None:
+    async def agent_loop(
+        self, websocket: WebSocketServerProtocol, player_id: int
+    ) -> None:
         """
         Main loop for handling agent communication.
 
@@ -135,7 +135,11 @@ class UTTTServer:
                 data: Dict[str, Any] = json.loads(message)
                 if data.get("action") == "move":
                     x, y = data.get("x"), data.get("y")
-                    if x is not None and y is not None and self.process_move(player_id, x, y):
+                    if (
+                        x is not None
+                        and y is not None
+                        and self.process_move(player_id, x, y)
+                    ):
                         await self.check_game_over()
                         if self.running:
                             self.current_turn = 3 - self.current_turn

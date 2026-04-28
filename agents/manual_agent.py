@@ -1,5 +1,10 @@
 import asyncio
+import os
+import sys
 from typing import List, Optional, Tuple, Union
+
+# Add project root to sys.path to support direct execution
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.base_agent import BaseUTTTAgent
 

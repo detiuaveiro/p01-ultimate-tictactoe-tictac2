@@ -46,18 +46,23 @@ An agent responds with a move:
     The frontend will be available at [http://localhost:8080](http://localhost:8080).
 
 2.  **Run Agents Locally**:
-    Create a virtual environment and install dependencies:
+    Execute the agents using `uv run`. You can now run them either as scripts or as modules:
     ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    # Option A: Run as a module (Recommended)
+    uv run python -m agents.advanced_agent
+
+    # Option B: Run as a script directly
+    uv run agents/advanced_agent.py
     ```
-    Execute the agents:
+    *Note: If using -m, do not include the .py extension.*
+
+3.  **Run Benchmarks**:
+    To run the headless tournament runner with full multi-core parallelism, you **must** use the free-threaded Python 3.14 build (`python3.14t`). Standard builds will be throttled by the GIL.
     ```bash
-    python agents/dummy_agent.py
-    # and in another terminal
-    python agents/manual_agent.py
+    # Run using uv with the free-threaded binary
+    uv run --python /home/mycsina/.local/bin/python3.14t python tournament.py -n 20 -w 8 -s random greedy alphabeta_1s
     ```
+    The tournament runner uses two levels of parallelism: inter-game concurrency and intra-game parallel search. Using the `python3.14t` binary allows these threads to scale across all available CPU cores.
 
 ## Project Structure
 
