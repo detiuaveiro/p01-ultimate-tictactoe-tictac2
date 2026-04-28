@@ -141,8 +141,10 @@ def rust_solver_pick_move(
 ) -> tuple[int, int]:
     """Call the Nelson Elhage's Rust solver via subprocess."""
     if not os.path.exists(RUST_SOLVER_PATH):
-        # Fallback to random if binary not found
-        return random.choice(state.get_legal_moves())
+        raise FileNotFoundError(
+            f"Rust solver binary not found at {RUST_SOLVER_PATH}. "
+            f"Please compile it using 'cargo build --release' in the external/ultimattt directory."
+        )
 
     # Format time limit for the Rust solver (it expects integer durations like '1s' or '500ms')
     ms = int(time_limit * 1000)

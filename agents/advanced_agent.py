@@ -24,9 +24,10 @@ SEARCH_TIME_LIMIT = 4.0
 class AdvancedAlphaBetaAgent(BaseUTTTAgent):
     """UTTT agent: Minimax + Alpha-Beta + Iterative Deepening + Bitboards."""
 
-    def __init__(self) -> None:
+    def __init__(self, weights: tuple[float, ...] | None = None) -> None:
         super().__init__()
         self.executor = ThreadPoolExecutor()
+        self.weights = weights
 
     def _translate_state(
         self,
@@ -93,7 +94,7 @@ class AdvancedAlphaBetaAgent(BaseUTTTAgent):
 
         loop = asyncio.get_running_loop()
         best_macro, best_micro = await loop.run_in_executor(
-            self.executor, run_search, state, SEARCH_TIME_LIMIT, self.player_id, self.executor
+            self.executor, run_search, state, SEARCH_TIME_LIMIT, self.player_id, self.executor, self.weights
         )
 
         # Map internal indices back to global [x, y] coordinates
