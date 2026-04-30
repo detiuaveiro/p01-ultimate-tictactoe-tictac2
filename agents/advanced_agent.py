@@ -6,7 +6,6 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Union
 
-# Add project root to sys.path to support direct execution
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.base_agent import BaseUTTTAgent

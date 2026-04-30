@@ -85,7 +85,7 @@ def main():
     # 95% Confidence Interval for proportion: p +/- 1.96 * sqrt(p(1-p)/n)
     margin_of_error = 1.96 * math.sqrt(win_rate * (1 - win_rate) / total)
 
-    print("\\n--- Validation Results ---")
+    print("\n--- Validation Results ---")
     print(f"Total Games: {total}")
     print(f"Wins: {wins} ({win_rate * 100:.1f}%)")
     print(f"Losses: {losses} ({losses / total * 100:.1f}%)")

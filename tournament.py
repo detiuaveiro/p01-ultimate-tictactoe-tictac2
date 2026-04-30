@@ -19,6 +19,7 @@ from agents.lib.state import (
     BitboardState,
     evaluate_state,
     run_search,
+    TranspositionTable,
 )
 
 # Shared executor for intra-game search parallelism
@@ -38,6 +39,7 @@ class Strategy(IntEnum):
     ALPHABETA_4S = 5
     RUST_SOLVER = 6
     ALPHABETA_OPT_1S = 7
+    ALPHABETA_OPT_4S = 8
 
 
 STRATEGY_LABELS = {
@@ -49,6 +51,7 @@ STRATEGY_LABELS = {
     Strategy.ALPHABETA_4S: "AlphaBeta-4s",
     Strategy.RUST_SOLVER: "RustSolver",
     Strategy.ALPHABETA_OPT_1S: "AlphaBeta-Opt-1s",
+    Strategy.ALPHABETA_OPT_4S: "AlphaBeta-Opt-4s",
 }
 
 # Time budgets for search-based strategies
@@ -59,6 +62,7 @@ STRATEGY_TIME_LIMITS = {
     Strategy.ALPHABETA_4S: 4.0,
     Strategy.RUST_SOLVER: 1.0,
     Strategy.ALPHABETA_OPT_1S: 1.0,
+    Strategy.ALPHABETA_OPT_4S: 4.0,
 }
 
 _OPTIMIZED_WEIGHTS = None
@@ -77,7 +81,7 @@ def load_optimized_weights():
     return _OPTIMIZED_WEIGHTS
 
 
-def pick_move(state: BitboardState, player_id: int, strategy: Strategy) -> tuple[int, int]:
+def pick_move(state: BitboardState, player_id: int, strategy: Strategy, tt: TranspositionTable | None = None) -> tuple[int, int]:
     """Select a move according to the given strategy."""
     legal_moves = state.get_legal_moves()
     if not legal_moves:
@@ -102,16 +106,18 @@ def pick_move(state: BitboardState, player_id: int, strategy: Strategy) -> tuple
     if strategy == Strategy.RUST_SOLVER:
         return rust_solver_pick_move(state, player_id, STRATEGY_TIME_LIMITS[strategy])
 
-    if strategy == Strategy.ALPHABETA_OPT_1S:
+    if strategy in (Strategy.ALPHABETA_OPT_1S, Strategy.ALPHABETA_OPT_4S):
         return run_search(
             state, STRATEGY_TIME_LIMITS[strategy], player_id,
             executor=_SEARCH_EXECUTOR,
             weights=load_optimized_weights(),
+            tt=tt,
         )
 
     return run_search(
         state, STRATEGY_TIME_LIMITS[strategy], player_id,
         executor=_SEARCH_EXECUTOR,
+        tt=tt,
     )
 
 
@@ -182,13 +188,15 @@ def rust_solver_pick_move(
         "analyze",
         "--engine=minimax",
         f"--limit={limit_str}",
+        "--table-mem=128M",
         notation,
     ]
 
     try:
-        # Run the solver, ensuring it doesn't print to stderr unless there's a real issue
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        # Look for the last "move=..." line in stdout
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True,
+            timeout=time_limit * 3 + 1,
+        )
         move_line = None
         for line in reversed(result.stdout.splitlines()):
             if line.startswith("move="):
@@ -196,21 +204,22 @@ def rust_solver_pick_move(
                 break
 
         if move_line:
-            # Format: "move=ae"
-            move_str = move_line.split("=")[1]
-            macro_idx = ord(move_str[0]) - ord('a')
-            micro_idx = ord(move_str[1]) - ord('a')
-            return (macro_idx, micro_idx)
-    except subprocess.CalledProcessError as e:
-        # Don't spam errors if the process was interrupted by the user (SIGINT/SIGTERM)
-        if e.returncode < 0:
-            return random.choice(state.get_legal_moves())
-        print(f"Rust solver error: {e}")
+            move_str = move_line.split("=")[1].strip()
+            if len(move_str) >= 2:
+                macro_idx = ord(move_str[0]) - ord('a')
+                micro_idx = ord(move_str[1]) - ord('a')
+                if 0 <= macro_idx < 9 and 0 <= micro_idx < 9:
+                    return (macro_idx, micro_idx)
+    except subprocess.TimeoutExpired:
+        pass
     except Exception as e:
-        if not isinstance(e, KeyboardInterrupt):
-            print(f"Rust solver error: {e}")
+        print(f"Rust solver error: {e}")
 
-    return random.choice(state.get_legal_moves())
+    legal_moves = state.get_legal_moves()
+    if legal_moves:
+        import random
+        return random.choice(legal_moves)
+    return (0, 0)
 
 
 # --- Game simulation ---
@@ -224,6 +233,7 @@ def simulate_game(strategy_p1: Strategy, strategy_p2: Strategy) -> int:
     """Play a full game and return the winner (1, 2, or 3 for draw)."""
     state = BitboardState()
     strategies = {1: strategy_p1, 2: strategy_p2}
+    tts = {1: TranspositionTable(), 2: TranspositionTable()}
     current_player = 1
 
     for _ in range(MAX_GAME_MOVES):
@@ -231,7 +241,7 @@ def simulate_game(strategy_p1: Strategy, strategy_p2: Strategy) -> int:
         if is_over:
             return winner
 
-        move = pick_move(state, current_player, strategies[current_player])
+        move = pick_move(state, current_player, strategies[current_player], tt=tts[current_player])
         state.apply_move(current_player, move[0], move[1])
         current_player = BOARD_SIDE - current_player
 
@@ -347,11 +357,8 @@ def run_tournament(
                 for _ in range(games_per_matchup):
                     games.append((p1_strat, p2_strat))
 
-    # Use all available cores for inter-game parallelism
-    effective_workers = max_workers
-
     try:
-        with ThreadPoolExecutor(max_workers=effective_workers) as game_executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as game_executor:
             futures = {
                 game_executor.submit(_run_single_game, p1, p2, results): (p1, p2)
                 for p1, p2 in games

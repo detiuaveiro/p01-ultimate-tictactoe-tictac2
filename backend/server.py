@@ -361,8 +361,3 @@ class UTTTServer:
 if __name__ == "__main__":
     server = UTTTServer()
     asyncio.run(server.start())
-
-
-if __name__ == "__main__":
-    server = UTTTServer()
-    asyncio.run(server.start())
