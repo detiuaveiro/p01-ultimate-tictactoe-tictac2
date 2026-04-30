@@ -9,6 +9,7 @@ import random
 import subprocess
 import threading
 import time
+import json
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ class Strategy(IntEnum):
     ALPHABETA_1S = 4
     ALPHABETA_4S = 5
     RUST_SOLVER = 6
+    ALPHABETA_OPT_1S = 7
 
 
 STRATEGY_LABELS = {
@@ -46,6 +48,7 @@ STRATEGY_LABELS = {
     Strategy.ALPHABETA_1S: "AlphaBeta-1s",
     Strategy.ALPHABETA_4S: "AlphaBeta-4s",
     Strategy.RUST_SOLVER: "RustSolver",
+    Strategy.ALPHABETA_OPT_1S: "AlphaBeta-Opt-1s",
 }
 
 # Time budgets for search-based strategies
@@ -55,7 +58,23 @@ STRATEGY_TIME_LIMITS = {
     Strategy.ALPHABETA_1S: 1.0,
     Strategy.ALPHABETA_4S: 4.0,
     Strategy.RUST_SOLVER: 1.0,
+    Strategy.ALPHABETA_OPT_1S: 1.0,
 }
+
+_OPTIMIZED_WEIGHTS = None
+def load_optimized_weights():
+    global _OPTIMIZED_WEIGHTS
+    if _OPTIMIZED_WEIGHTS is not None:
+        return _OPTIMIZED_WEIGHTS
+    try:
+        with open("cmaes_weights.json", "r") as f:
+            data = json.load(f)
+            _OPTIMIZED_WEIGHTS = tuple(data["best_weights"])
+    except FileNotFoundError:
+        print("Warning: cmaes_weights.json not found, falling back to defaults for ALPHABETA_OPT")
+        from agents.lib.state import DEFAULT_WEIGHTS
+        _OPTIMIZED_WEIGHTS = DEFAULT_WEIGHTS
+    return _OPTIMIZED_WEIGHTS
 
 
 def pick_move(state: BitboardState, player_id: int, strategy: Strategy) -> tuple[int, int]:
@@ -82,6 +101,13 @@ def pick_move(state: BitboardState, player_id: int, strategy: Strategy) -> tuple
     # Time-limited iterative deepening with parallel root search
     if strategy == Strategy.RUST_SOLVER:
         return rust_solver_pick_move(state, player_id, STRATEGY_TIME_LIMITS[strategy])
+
+    if strategy == Strategy.ALPHABETA_OPT_1S:
+        return run_search(
+            state, STRATEGY_TIME_LIMITS[strategy], player_id,
+            executor=_SEARCH_EXECUTOR,
+            weights=load_optimized_weights(),
+        )
 
     return run_search(
         state, STRATEGY_TIME_LIMITS[strategy], player_id,
